@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(60, 4.8%, 95.9%);
+  --secondary-foreground: hsl(24, 9.8%, 10%);
+  --accent: hsl(60, 4.8%, 95.9%);
+  --accent-foreground: hsl(24, 9.8%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+
+  /* Custom healthcare colors */
+  --health-green: hsl(142, 70%, 45%);
+  --health-yellow: hsl(38, 92%, 50%);
+  --health-red: hsl(0, 84%, 60%);
+  --health-blue: hsl(213, 78%, 58%);
+}
+
+/* Leaflet Map 스타일 */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+.custom-map-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* 지도가 로드되지 않을 경우 대체 시각화 스타일 */
+.fallback-map {
+  background: linear-gradient(135deg, #f0f9ff 0%, #ecfdf5 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .health-green {
+    color: var(--health-green);
+  }
+  
+  .health-yellow {
+    color: var(--health-yellow);
+  }
+  
+  .health-red {
+    color: var(--health-red);
+  }
+  
+  .health-blue {
+    color: var(--health-blue);
+  }
+  
+  .bg-health-green {
+    background-color: var(--health-green);
+  }
+  
+  .bg-health-yellow {
+    background-color: var(--health-yellow);
+  }
+  
+  .bg-health-red {
+    background-color: var(--health-red);
+  }
+  
+  .bg-health-blue {
+    background-color: var(--health-blue);
+  }
+}
+
+@layer utilities {
+  .animate-pulse-slow {
+    animation: pulse 2s infinite;
+  }
+  
+  .animate-bounce-slow {
+    animation: bounce 3s infinite;
+  }
+}
