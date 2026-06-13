@@ -17,6 +17,23 @@
 
 ---
 
+## ⚡ AWS 빠른 시작 (One-Command Quick Start)
+
+**갓 만든 EC2(Ubuntu) 인스턴스에 SSH로 접속한 뒤, 아래 명령어 한 줄만 복사해서 붙여넣으면** Node.js 설치 → 소스 내려받기 → 빌드 → 센서 연동 포함 실행까지 한 번에 됩니다.
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs git && git clone https://github.com/jsyang9455/hypernetwork-healthcare.git && cd hypernetwork-healthcare && npm install && npm run build && sudo npm install -g pm2 && PORT=5000 SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings SENSOR_POLL_INTERVAL=30000 pm2 start dist/index.js --name healthcare && pm2 startup && pm2 save
+```
+
+실행이 끝나면 `http://<EC2_PUBLIC_IP>:5000` 으로 접속할 수 있습니다.
+- 로그인: 관리자 `test / test123`, 회원 `kimmy / password123`
+- 센서는 자동으로 30초마다 동기화됩니다 (로그 확인: `pm2 logs healthcare`).
+- 80포트(도메인)·HTTPS·문제 해결 등 자세한 내용은 아래 [AWS 서버 배포 가이드](#aws-서버-배포-가이드-deploy-on-aws-ec2)를 참고하세요.
+
+> ⚠️ 접속 전에 AWS **보안 그룹**에서 `5000` 포트(또는 80 포트)를 열어야 합니다.
+
+---
+
 ## 로컬 실행 (Local Development)
 
 ```bash
