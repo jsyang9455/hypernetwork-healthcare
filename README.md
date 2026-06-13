@@ -75,7 +75,7 @@ npm run build
 | `NODE_ENV` | 실행 모드 | `production` (start 스크립트가 자동 설정) |
 | `DATABASE_URL` | PostgreSQL 연결 문자열 (DB 스키마 사용 시) | (없음) |
 | `SENSOR_API_URL` | 외부 센서 서버의 측정값 엔드포인트 URL | `https://SensorDeviceSvr.replit.app/api/readings` |
-| `SENSOR_POLL_INTERVAL` | 센서 데이터 폴링 주기 (밀리초) | `30000` (30초) |
+| `SENSOR_POLL_INTERVAL` | 센서 데이터 폴링 주기 (밀리초, 1000 이상 정수) | `30000` (30초) |
 
 예시:
 ```bash

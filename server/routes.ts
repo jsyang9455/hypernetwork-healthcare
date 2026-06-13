@@ -10,7 +10,17 @@ import { z } from 'zod';
 //   SENSOR_API_URL        - full URL of the sensor readings endpoint
 //   SENSOR_POLL_INTERVAL  - polling interval in milliseconds
 const SENSOR_API_URL = process.env.SENSOR_API_URL || "https://SensorDeviceSvr.replit.app/api/readings";
-const SENSOR_POLL_INTERVAL_MS = parseInt(process.env.SENSOR_POLL_INTERVAL || "30000", 10); // default 30 seconds
+
+// Parse poll interval safely: must be a positive integer >= 1000ms, otherwise fall back to 30s.
+const DEFAULT_SENSOR_POLL_INTERVAL_MS = 30_000; // 30 seconds
+const parsedPollInterval = parseInt(process.env.SENSOR_POLL_INTERVAL || "", 10);
+const SENSOR_POLL_INTERVAL_MS =
+  Number.isFinite(parsedPollInterval) && parsedPollInterval >= 1000
+    ? parsedPollInterval
+    : DEFAULT_SENSOR_POLL_INTERVAL_MS;
+if (process.env.SENSOR_POLL_INTERVAL && SENSOR_POLL_INTERVAL_MS === DEFAULT_SENSOR_POLL_INTERVAL_MS && String(parsedPollInterval) !== process.env.SENSOR_POLL_INTERVAL) {
+  console.warn(`[Sensor] Invalid SENSOR_POLL_INTERVAL="${process.env.SENSOR_POLL_INTERVAL}" (must be an integer >= 1000ms). Falling back to ${DEFAULT_SENSOR_POLL_INTERVAL_MS}ms.`);
+}
 
 // Map sensor MAC addresses → system user IDs
 const MAC_TO_USER_ID: Record<string, number> = {
