@@ -22,7 +22,7 @@
 **갓 만든 EC2(Ubuntu) 인스턴스에 SSH로 접속한 뒤, 아래 명령어 한 줄만 복사해서 붙여넣으면** 스왑 메모리 설정 → Node.js 설치 → 소스 내려받기 → 빌드 → 센서 연동 포함 실행까지 한 번에 됩니다.
 
 ```bash
-sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile && curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs git && git clone https://github.com/jsyang9455/hypernetwork-healthcare.git && cd hypernetwork-healthcare && npm install && npm run build && sudo npm install -g pm2 && PORT=5000 SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings SENSOR_POLL_INTERVAL=30000 pm2 start dist/index.js --name healthcare && pm2 startup && pm2 save
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile && curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs git && git clone https://github.com/jsyang9455/hypernetwork-healthcare.git && cd hypernetwork-healthcare && npm install && npm run build && sudo npm install -g pm2 && NODE_ENV=production PORT=5000 SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings SENSOR_POLL_INTERVAL=30000 pm2 start dist/index.js --name healthcare && pm2 startup && pm2 save
 ```
 
 실행이 끝나면 `http://<EC2_PUBLIC_IP>:5000` 으로 접속할 수 있습니다.
@@ -118,10 +118,12 @@ npm start
 sudo npm install -g pm2
 
 # 빌드된 서버 실행 (센서 연동 환경변수 포함)
+# ⚠️ NODE_ENV=production 을 반드시 포함하세요. (빠지면 개발 모드로 떠서 화면이 안 나옵니다)
+NODE_ENV=production \
 PORT=5000 \
 SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings \
 SENSOR_POLL_INTERVAL=30000 \
-pm2 start dist/index.js --name healthcare --env production
+pm2 start dist/index.js --name healthcare
 
 # 부팅 시 자동 시작 등록
 pm2 startup
@@ -292,9 +294,15 @@ pm2 restart healthcare
 
   # 그 다음 다시 빌드/실행
   cd ~/hypernetwork-healthcare && npm install && npm run build
-  PORT=5000 SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings SENSOR_POLL_INTERVAL=30000 pm2 start dist/index.js --name healthcare && pm2 save
+  NODE_ENV=production PORT=5000 SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings SENSOR_POLL_INTERVAL=30000 pm2 start dist/index.js --name healthcare && pm2 save
   ```
   > 더 근본적으로는 `t2.small`(RAM 2GB) 이상 인스턴스를 사용하면 스왑 없이도 빌드됩니다.
+- **화면이 안 나오고 로그에 `[vite] Pre-transform error: Failed to load url /src/main.tsx` 가 보일 때**: 서버가 개발 모드로 실행된 경우입니다. 실행 명령어에 `NODE_ENV=production` 이 빠지면 발생합니다. 아래처럼 다시 실행하세요.
+  ```bash
+  pm2 delete healthcare
+  cd ~/hypernetwork-healthcare
+  NODE_ENV=production PORT=5000 SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings SENSOR_POLL_INTERVAL=30000 pm2 start dist/index.js --name healthcare && pm2 save
+  ```
 - **접속이 안 될 때**: AWS 보안 그룹에서 해당 포트(80 또는 5000)가 열려 있는지 확인하세요.
 - **실시간 데이터가 안 보일 때**: Nginx 설정에 WebSocket(`Upgrade`/`Connection`) 헤더가 있는지 확인하세요.
 - **포트 충돌**: `PORT` 환경 변수로 다른 포트를 지정하세요. (예: `PORT=8080 pm2 start dist/index.js --name healthcare`)
