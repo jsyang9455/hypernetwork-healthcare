@@ -19,10 +19,10 @@
 
 ## ⚡ AWS 빠른 시작 (One-Command Quick Start)
 
-**갓 만든 EC2(Ubuntu) 인스턴스에 SSH로 접속한 뒤, 아래 명령어 한 줄만 복사해서 붙여넣으면** Node.js 설치 → 소스 내려받기 → 빌드 → 센서 연동 포함 실행까지 한 번에 됩니다.
+**갓 만든 EC2(Ubuntu) 인스턴스에 SSH로 접속한 뒤, 아래 명령어 한 줄만 복사해서 붙여넣으면** 스왑 메모리 설정 → Node.js 설치 → 소스 내려받기 → 빌드 → 센서 연동 포함 실행까지 한 번에 됩니다.
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs git && git clone https://github.com/jsyang9455/hypernetwork-healthcare.git && cd hypernetwork-healthcare && npm install && npm run build && sudo npm install -g pm2 && PORT=5000 SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings SENSOR_POLL_INTERVAL=30000 pm2 start dist/index.js --name healthcare && pm2 startup && pm2 save
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile && curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs git && git clone https://github.com/jsyang9455/hypernetwork-healthcare.git && cd hypernetwork-healthcare && npm install && npm run build && sudo npm install -g pm2 && PORT=5000 SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings SENSOR_POLL_INTERVAL=30000 pm2 start dist/index.js --name healthcare && pm2 startup && pm2 save
 ```
 
 실행이 끝나면 `http://<EC2_PUBLIC_IP>:5000` 으로 접속할 수 있습니다.
@@ -31,6 +31,8 @@ curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-ge
 - 80포트(도메인)·HTTPS·문제 해결 등 자세한 내용은 아래 [AWS 서버 배포 가이드](#aws-서버-배포-가이드-deploy-on-aws-ec2)를 참고하세요.
 
 > ⚠️ 접속 전에 AWS **보안 그룹**에서 `5000` 포트(또는 80 포트)를 열어야 합니다.
+>
+> 💡 **`Killed` 메시지가 뜬다면** 메모리 부족(OOM)입니다. 위 명령어는 맨 앞에 **2GB 스왑 메모리**를 자동으로 추가하므로 `t2.micro`(RAM 1GB) 같은 작은 인스턴스에서도 빌드가 됩니다. 이미 `Killed`가 났던 경우, 아래 [문제 해결](#자주-발생하는-문제-troubleshooting)의 스왑 설정 후 다시 시도하세요.
 
 ---
 
@@ -278,6 +280,21 @@ pm2 restart healthcare
 ---
 
 ## 자주 발생하는 문제 (Troubleshooting)
+- **`Killed` 메시지가 뜨며 빌드/설치가 멈출 때 (메모리 부족, OOM)**: `t2.micro`(RAM 1GB) 등 작은 인스턴스에서 자주 발생합니다. 아래처럼 **스왑 메모리 2GB**를 추가한 뒤 다시 빌드하면 해결됩니다.
+  ```bash
+  sudo fallocate -l 2G /swapfile
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile
+  sudo swapon /swapfile
+  # 재부팅 후에도 유지되도록 등록
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+  free -h   # Swap 항목에 2.0Gi 가 보이면 성공
+
+  # 그 다음 다시 빌드/실행
+  cd ~/hypernetwork-healthcare && npm install && npm run build
+  PORT=5000 SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings SENSOR_POLL_INTERVAL=30000 pm2 start dist/index.js --name healthcare && pm2 save
+  ```
+  > 더 근본적으로는 `t2.small`(RAM 2GB) 이상 인스턴스를 사용하면 스왑 없이도 빌드됩니다.
 - **접속이 안 될 때**: AWS 보안 그룹에서 해당 포트(80 또는 5000)가 열려 있는지 확인하세요.
 - **실시간 데이터가 안 보일 때**: Nginx 설정에 WebSocket(`Upgrade`/`Connection`) 헤더가 있는지 확인하세요.
 - **포트 충돌**: `PORT` 환경 변수로 다른 포트를 지정하세요. (예: `PORT=8080 pm2 start dist/index.js --name healthcare`)
