@@ -74,11 +74,17 @@ npm run build
 | `PORT` | 서버가 사용할 포트 | `5000` |
 | `NODE_ENV` | 실행 모드 | `production` (start 스크립트가 자동 설정) |
 | `DATABASE_URL` | PostgreSQL 연결 문자열 (DB 스키마 사용 시) | (없음) |
+| `SENSOR_API_URL` | 외부 센서 서버의 측정값 엔드포인트 URL | `https://SensorDeviceSvr.replit.app/api/readings` |
+| `SENSOR_POLL_INTERVAL` | 센서 데이터 폴링 주기 (밀리초) | `30000` (30초) |
 
 예시:
 ```bash
 export PORT=5000
+export SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings
+export SENSOR_POLL_INTERVAL=30000
 ```
+
+> 💡 AWS에서 한 번에 설정하려면 `.env` 대신 PM2 실행 시 환경 변수를 함께 전달하면 됩니다 (아래 [센서 연동](#센서-연동-구조-sensor-integration) 섹션 참고).
 
 ### 6. 실행 (Run)
 
@@ -92,8 +98,11 @@ npm start
 ```bash
 sudo npm install -g pm2
 
-# 빌드된 서버 실행
-PORT=5000 pm2 start dist/index.js --name healthcare --env production
+# 빌드된 서버 실행 (센서 연동 환경변수 포함)
+PORT=5000 \
+SENSOR_API_URL=https://SensorDeviceSvr.replit.app/api/readings \
+SENSOR_POLL_INTERVAL=30000 \
+pm2 start dist/index.js --name healthcare --env production
 
 # 부팅 시 자동 시작 등록
 pm2 startup
@@ -145,6 +154,97 @@ sudo systemctl restart nginx
 sudo apt-get install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d your-domain.com
 ```
+
+---
+
+## 센서 연동 구조 (Sensor Integration)
+
+이 시스템은 외부 센서 서버에서 실제 측정값을 받아 화면에 표시합니다. AWS 설치 시 **별도 작업 없이 자동으로** 동작하며, 환경 변수만 바꾸면 다른 센서 서버로도 연결할 수 있습니다.
+
+### 전체 흐름 (Architecture)
+```
+┌────────────────────────┐      30초마다 폴링       ┌──────────────────────────┐      WebSocket(/ws)     ┌─────────────┐
+│  센서 서버               │  ───────────────────▶  │  본 서버 (Express)         │  ───────────────────▶  │  브라우저     │
+│  SensorDeviceSvr        │   GET /api/readings    │  - MAC → 환자 매핑          │   실시간 데이터 전송      │  대시보드     │
+│  .replit.app            │                        │  - 건강/움직임 DB 저장      │                         │             │
+└────────────────────────┘                        │  - 이상치 알림 생성         │                         └─────────────┘
+                                                   └──────────────────────────┘
+```
+
+1. 서버가 시작되면 즉시 1회, 이후 **30초마다** 센서 서버(`SENSOR_API_URL`)의 `/api/readings` 를 호출합니다.
+2. 각 측정값의 **MAC 주소**로 어떤 환자(사용자)인지 식별합니다.
+3. 받은 값을 건강 데이터(심박수·호흡수)와 침대 움직임 데이터(자세·움직임 강도)로 변환해 저장합니다.
+4. 이상치(예: 심박수 100 초과/50 미만)는 자동으로 알림을 생성합니다.
+5. WebSocket(`/ws`)으로 모든 접속 화면에 실시간 전송합니다.
+
+### 센서 데이터 필드 (Data Fields)
+센서 서버가 주는 `/api/readings` 응답 항목과 매핑:
+
+| 센서 필드 | 의미 | 시스템 매핑 |
+|-----------|------|-------------|
+| `mac` | 센서 장치 고유 주소 | 환자(사용자) 식별 |
+| `hr` | 심박수 (bpm) | 건강 데이터 → 심박수 |
+| `br` | 호흡수 | 건강 데이터 → 호흡수 |
+| `pos` | 자세 코드 (0~5) | 침대 움직임 → 누움/앉음/서있음 |
+| `en1`~`en7` | 에너지/환경 센서값 | 움직임 강도·이동성 점수 계산 |
+| `err` | 오류 코드 | (모니터링용) |
+
+### MAC ↔ 환자 매핑 (현재 설정)
+| 센서 MAC | 장치 이름 | 환자 ID | 위치 |
+|----------|-----------|---------|------|
+| `8CBFEAAE4A64` | 침대센서-A | 1 (김미영) | 101호 |
+| `E4B323065F54` | 침대센서-B | 2 (이준호) | 102호 |
+| `8CBFEAA77777` | 침대센서-C | 3 (박서영) | 103호 |
+
+> 매핑을 추가/변경하려면 `server/routes.ts` 상단의 `MAC_TO_USER_ID`, `MAC_TO_DEVICE_NAME` 객체를 수정한 뒤 다시 빌드(`npm run build`)하면 됩니다.
+
+### AWS에서 한 번에 설정하기 (One-shot Setup)
+센서 연동은 코드에 기본값이 들어 있어 **추가 설정 없이 바로 동작**합니다. 센서 서버 주소나 폴링 주기를 바꾸려면 PM2 실행 시 환경 변수만 전달하세요. 매번 길게 입력하지 않으려면 아래 **ecosystem 파일** 방식을 권장합니다.
+
+`~/hypernetwork-healthcare/ecosystem.config.cjs` 파일을 만들고:
+```js
+module.exports = {
+  apps: [
+    {
+      name: "healthcare",
+      script: "dist/index.js",
+      env: {
+        NODE_ENV: "production",
+        PORT: "5000",
+        SENSOR_API_URL: "https://SensorDeviceSvr.replit.app/api/readings",
+        SENSOR_POLL_INTERVAL: "30000",
+      },
+    },
+  ],
+};
+```
+실행:
+```bash
+pm2 start ecosystem.config.cjs
+pm2 startup
+pm2 save
+```
+이후 설정을 바꾸면 `pm2 restart ecosystem.config.cjs --update-env` 로 반영합니다.
+
+### 연동 확인 (Verify)
+```bash
+# 1) 서버 로그에 30초마다 동기화 메시지가 보이는지 확인
+pm2 logs healthcare
+#   → [Sensor] Synced 3 devices at ...
+
+# 2) 센서 상태 API 직접 호출 (connected: true 면 정상)
+curl http://localhost:5000/api/sensor/status
+
+# 3) 센서 원본 데이터 확인
+curl http://localhost:5000/api/sensor/readings
+```
+대시보드 좌측 상단의 **"센서 연결됨 / 센서 오프라인"** 배지로도 연동 상태를 한눈에 확인할 수 있습니다.
+
+### 관련 API 엔드포인트
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/sensor/status` | 연결 상태, 마지막 동기화 시각, 장치 수, MAC 매핑 |
+| GET | `/api/sensor/readings` | 센서 서버에서 받은 최신 원본 측정값 |
 
 ---
 

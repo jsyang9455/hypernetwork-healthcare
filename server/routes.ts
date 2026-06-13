@@ -6,8 +6,11 @@ import { insertHealthDataSchema, insertBedMovementDataSchema, insertAlertSchema,
 import { z } from 'zod';
 
 // ─── Sensor Integration ────────────────────────────────────────────────────
-const SENSOR_API_URL = "https://SensorDeviceSvr.replit.app/api/readings";
-const SENSOR_POLL_INTERVAL_MS = 30_000; // 30 seconds
+// Configurable via environment variables for AWS / other deployments.
+//   SENSOR_API_URL        - full URL of the sensor readings endpoint
+//   SENSOR_POLL_INTERVAL  - polling interval in milliseconds
+const SENSOR_API_URL = process.env.SENSOR_API_URL || "https://SensorDeviceSvr.replit.app/api/readings";
+const SENSOR_POLL_INTERVAL_MS = parseInt(process.env.SENSOR_POLL_INTERVAL || "30000", 10); // default 30 seconds
 
 // Map sensor MAC addresses → system user IDs
 const MAC_TO_USER_ID: Record<string, number> = {
